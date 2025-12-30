@@ -6,7 +6,7 @@ import org.apache.logging.log4j.Logger;
 import refresh.database.GameDatabaseContext;
 import refresh.database.models.PersistentJobState;
 import refresh.workers.cwlib.jobs.TestJob;
-
+import refresh.workers.cwlib.jobs.AnalyzePlanMetadataJob;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +32,7 @@ public class WorkerManager {
         }
 
         this._jobs.add(new TestJob());
+        this._jobs.add(new AnalyzePlanMetadataJob());
     }
 
     private void runWorkCycle() throws Exception {

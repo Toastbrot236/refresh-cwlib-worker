@@ -2,7 +2,7 @@ package refresh.database;
 
 import refresh.database.models.PersistentJobState;
 import refresh.database.models.WorkerInfo;
-
+import refresh.database.models.GameItem;
 import java.sql.*;
 import java.time.LocalDateTime;
 
@@ -94,6 +94,54 @@ public class GameDatabaseContext implements AutoCloseable {
             try(ResultSet rs = stmt.executeQuery()) {
                 if(rs.next()) return new PersistentJobState(rs);
                 return null;
+            }
+        }
+    }
+
+    private GameItem getGameItem(String planHash) throws SQLException {
+        String sql = 
+                """
+                SELECT "PlanHash", "IconHash", "Title", "Description", "CreatorName", 
+                    "ContributorNames", "IsGamePhoto", "IsCameraPhoto", "IsUserCreation"
+                FROM \"GameItems\" 
+                WHERE \"PlanHash\" = ?
+                """;
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, planHash);
+
+            try(ResultSet rs = stmt.executeQuery()) {
+                if(rs.next()) return new GameItem(rs);
+                return null;
+            }
+        }
+    }
+
+    public boolean insertGameItem(GameItem item) throws SQLException {
+        // check if row already exists
+        GameItem existing = this.getGameItem(item.PlanHash);
+        if (existing != null) return false; // row already exists; don't think there is any need to update it
+
+        String sql = 
+                """
+                INSERT INTO "GameItems" ("PlanHash", "IconHash", "Title", "Description", "CreatorName", 
+                    "ContributorNames", "IsGamePhoto", "IsCameraPhoto", "IsUserCreation")
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING "PlanHash"
+                """;
+
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, item.PlanHash);
+            stmt.setString(2, item.IconHash);
+            stmt.setString(3, item.Title);
+            stmt.setString(4, item.Description);
+            stmt.setString(5, item.CreatorName);
+            stmt.setArray(6, conn.createArrayOf("TEXT", item.ContributorNames));
+            stmt.setBoolean(7, item.IsGamePhoto);
+            stmt.setBoolean(8, item.IsCameraPhoto);
+            stmt.setBoolean(9, item.IsUserCreation);
+
+            try(ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
             }
         }
     }
