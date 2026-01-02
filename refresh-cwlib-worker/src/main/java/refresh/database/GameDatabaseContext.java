@@ -6,6 +6,8 @@ import refresh.database.models.WorkerInfo;
 import java.sql.*;
 import java.time.LocalDateTime;
 
+import refresh.database.models.GameInnerLevel;
+
 public class GameDatabaseContext implements AutoCloseable {
     private final Connection conn;
 
@@ -96,6 +98,34 @@ public class GameDatabaseContext implements AutoCloseable {
                 return null;
             }
         }
+    }
+
+    public int getLevelIdFromRootHash(String hash) throws SQLException {
+        String sql = "SELECT \"LevelId\" FROM \"GameLevels\" WHERE \"RootResource\" = ?";
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, hash);
+
+            try(ResultSet rs = stmt.executeQuery()) {
+                if(rs.next()) return rs.getInt(1);
+                return 0;
+            }
+        }
+    }
+
+    public void updateCompleteAdventureDataJob(String adventureRootHash) {
+        String sql = "DELETE FROM \"LevelId\" FROM \"GameLevels\" WHERE \"RootResource\" = ?";
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, hash);
+
+            try(ResultSet rs = stmt.executeQuery()) {
+                if(rs.next()) return rs.getInt(1);
+                return 0;
+            }
+        }
+    }
+
+    public void createOrInsertInnerLevel(GameInnerLevel innerLevel, int adventureId) {
+
     }
 
     @Override
