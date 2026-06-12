@@ -1,4 +1,4 @@
-package refresh.server.responses.api;
+package refresh.server.cwlib.responses.api;
 
 public class ErrorResponse {
     public String message;

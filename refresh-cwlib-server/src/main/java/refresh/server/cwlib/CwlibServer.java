@@ -1,4 +1,4 @@
-package refresh.server;
+package refresh.server.cwlib;
 
 import java.io.IOException;
 
@@ -11,9 +11,9 @@ import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.util.Callback;
 
-import refresh.server.endpoints.FetchEndpoints;
-import refresh.server.helpers.LogHelper;
-import refresh.server.helpers.ResponseHelper;
+import refresh.server.cwlib.endpoints.FetchEndpoints;
+import refresh.server.cwlib.helpers.LogHelper;
+import refresh.server.cwlib.helpers.ResponseHelper;
 
 public class CwlibServer {
     private static final Logger logger = LogManager.getLogger(CwlibServer.class.getName());

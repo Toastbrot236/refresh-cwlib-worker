@@ -1,6 +1,6 @@
-package refresh.server.helpers;
+package refresh.server.cwlib.helpers;
 
-import refresh.server.EndpointContext;
+import refresh.server.cwlib.EndpointContext;
 
 public abstract class LogHelper {
     /**

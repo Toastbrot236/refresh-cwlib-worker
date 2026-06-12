@@ -1,4 +1,4 @@
-package refresh.server.endpoints;
+package refresh.server.cwlib.endpoints;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,9 +14,9 @@ import cwlib.types.SerializedResource;
 import cwlib.types.data.Revision;
 import cwlib.types.data.WrappedResource;
 import cwlib.util.GsonUtils;
-import refresh.server.EndpointContext;
-import refresh.server.helpers.LogHelper;
-import refresh.server.helpers.ResponseHelper;
+import refresh.server.cwlib.EndpointContext;
+import refresh.server.cwlib.helpers.LogHelper;
+import refresh.server.cwlib.helpers.ResponseHelper;
 
 public abstract class FetchEndpoints {
     private static final Logger logger = LogManager.getLogger(FetchEndpoints.class.getName());

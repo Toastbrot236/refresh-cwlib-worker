@@ -1,4 +1,4 @@
-package refresh.server.helpers;
+package refresh.server.cwlib.helpers;
 
 import java.util.Arrays;
 
@@ -6,8 +6,8 @@ import org.apache.logging.log4j.Logger;
 import org.eclipse.jetty.io.Content;
 
 import cwlib.util.GsonUtils;
-import refresh.server.EndpointContext;
-import refresh.server.responses.api.ErrorResponse;
+import refresh.server.cwlib.EndpointContext;
+import refresh.server.cwlib.responses.api.ErrorResponse;
 
 public abstract class ResponseHelper {
     public static boolean writeError(int statusCode, EndpointContext context, String message, Logger logger) {

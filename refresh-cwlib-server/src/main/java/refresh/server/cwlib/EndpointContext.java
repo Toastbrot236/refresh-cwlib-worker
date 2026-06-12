@@ -1,4 +1,4 @@
-package refresh.server;
+package refresh.server.cwlib;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
@@ -7,7 +7,7 @@ import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.Callback;
 import org.eclipse.jetty.util.Fields;
 
-import refresh.server.helpers.LogHelper;
+import refresh.server.cwlib.helpers.LogHelper;
 
 public class EndpointContext {
     private static final Logger logger = LogManager.getLogger(CwlibServer.class.getName());
