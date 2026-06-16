@@ -57,7 +57,7 @@ public class CwlibServer {
                 switch (context.method) {
                     case "get":
                         return switch (endpointOperator) {
-                            case "asoriginal" -> FetchEndpoints.returnResourceAsJson(context, resourceHash);
+                            case "asoriginal" -> FetchEndpoints.returnResourceAsOriginal(context, resourceHash);
                             case "asjson" -> FetchEndpoints.returnResourceAsJson(context, resourceHash);
                             case "asminimaljson" -> ResponseHelper.writeTodoError(context, logger);
                             default -> ResponseHelper.writeError(404, context, "Unknown GET path", logger);
