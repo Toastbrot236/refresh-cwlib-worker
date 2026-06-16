@@ -12,6 +12,7 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.util.Callback;
 
 import refresh.server.cwlib.endpoints.FetchEndpoints;
+import refresh.server.cwlib.endpoints.WriteEndpoints;
 import refresh.server.cwlib.helpers.LogHelper;
 import refresh.server.cwlib.helpers.ResponseHelper;
 
@@ -43,12 +44,14 @@ public class CwlibServer {
                 
                 // all routes below have atleast 3 parts: the "cwlib" prefix, the operator, and the asset hash;
                 // for now we will only search in the main data store, so no dry archive or anything remote
-                if (context.pathLowerParts.length < 3 || !context.pathLowerParts[0].equals("cwlib")) {
-                    return ResponseHelper.writeUnknownPathOrMethodError(context, logger);
+                // Indices offset by 1 because paths returned by Jetty start with a trailing slash, so there will always be an empty first string
+                // TODO remove said string in context ctor
+                if (context.pathLowerParts.length < 4 || !context.pathLowerParts[1].equals("cwlib")) {
+                    return ResponseHelper.writeError(404, context, "Path is too short or does not start with 'cwlib'", logger);
                 }
 
-                String endpointOperator = context.pathLowerParts[1];
-                String resourceHash = context.pathLowerParts[2];
+                String endpointOperator = context.pathLowerParts[2];
+                String resourceHash = context.pathLowerParts[3];
 
                 // method and path are case-insensitive here because we lower-case them in the context ctor
                 switch (context.method) {
@@ -57,7 +60,7 @@ public class CwlibServer {
                             case "asoriginal" -> FetchEndpoints.returnResourceAsJson(context, resourceHash);
                             case "asjson" -> FetchEndpoints.returnResourceAsJson(context, resourceHash);
                             case "asminimaljson" -> ResponseHelper.writeTodoError(context, logger);
-                            default -> ResponseHelper.writeUnknownPathOrMethodError(context, logger);
+                            default -> ResponseHelper.writeError(404, context, "Unknown GET path", logger);
                         };
                     case "post":
                         return switch (endpointOperator) {
@@ -69,9 +72,9 @@ public class CwlibServer {
                             case "editquest" -> ResponseHelper.writeTodoError(context, logger);
                             case "editchunk" -> ResponseHelper.writeTodoError(context, logger);
                             case "editpins" -> ResponseHelper.writeTodoError(context, logger);
-                            default -> ResponseHelper.writeUnknownPathOrMethodError(context, logger);
+                            default -> ResponseHelper.writeError(404, context, "Unknown POST path", logger);
                         };
-                    default: return ResponseHelper.writeUnknownPathOrMethodError(context, logger);
+                    default: return ResponseHelper.writeError(404, context, "Unknown HTTP method", logger);
                 }
             }
         });
