@@ -20,5 +20,12 @@ public class Main {
 
         logger.info("Starting up server...");
         Server = new CwlibServer();
+
+        try {
+            Server.start();
+        } catch (Exception e) {
+            logger.warn("Failed to start server, exiting...");
+            System.exit(0);
+        }
     }
 }

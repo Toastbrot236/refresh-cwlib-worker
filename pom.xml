@@ -17,6 +17,8 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>refresh-cwlib-common</module>
+        <module>refresh-cwlib-server</module>
         <module>refresh-cwlib-worker</module>
         <module>external/toolkit/lib/cwlib</module>
     </modules>
