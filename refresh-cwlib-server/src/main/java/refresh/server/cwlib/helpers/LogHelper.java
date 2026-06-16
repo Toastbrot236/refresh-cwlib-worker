@@ -1,5 +1,10 @@
 package refresh.server.cwlib.helpers;
 
+import cwlib.enums.CompressionFlags;
+import cwlib.enums.ResourceType;
+import cwlib.enums.SerializationType;
+import cwlib.types.SerializedResource;
+import cwlib.types.data.Revision;
 import refresh.server.cwlib.EndpointContext;
 
 public abstract class LogHelper {
@@ -8,6 +13,25 @@ public abstract class LogHelper {
      */
     public static String formatRequestLog(String reqId, String message) {
         return "[Request " + reqId + "] " + message;
+    }
+
+    /**
+     * Formats a message with the request ID and the message.
+     */
+    public static String formatSerializedResourceLog(String reqId, String hash, SerializedResource resource, String message) {
+        ResourceType type = resource.getResourceType();
+        SerializationType format = resource.getSerializationType();
+        Revision revision = resource.getRevision();
+        int headRevision = revision.getHead();
+        short branchID = revision.getBranchID();
+        short branchRevision = revision.getBranchRevision();
+        String compression = CompressionFlags.toString(resource.getCompressionFlags());
+
+        String ret = "'" + hash + "' (type: " + type + " | " + format
+            + "; revision: " + headRevision + " | " + branchID + " | " + branchRevision + "; compression: " + compression + ")";
+        
+        if (message != null) ret = message + " " + ret; // message is optional, everything else is mandatory
+        return formatRequestLog(reqId, ret);
     }
 
     /**

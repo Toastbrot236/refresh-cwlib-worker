@@ -11,6 +11,7 @@ import refresh.server.cwlib.helpers.LogHelper;
 
 public class EndpointContext {
     private static final Logger logger = LogManager.getLogger(CwlibServer.class.getName());
+    public static final String DATA_STORE_BASE_PATH = "/home/ich/Development/Refresh/Refresh-DB/dataStore/"; // TODO make this configurable
 
     public Request request;
     public Response response;
