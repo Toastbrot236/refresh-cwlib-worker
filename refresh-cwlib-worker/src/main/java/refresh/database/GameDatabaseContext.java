@@ -2,9 +2,15 @@ package refresh.database;
 
 import refresh.database.models.PersistentJobState;
 import refresh.database.models.WorkerInfo;
+import refresh.exceptions.MissingDatabaseMigrationException;
+import refresh.resources.MinimalLevelData;
+import refresh.resources.MinimalPlanData;
+import refresh.resources.MinimalResource;
 
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class GameDatabaseContext implements AutoCloseable {
     private final Connection conn;
@@ -20,6 +26,82 @@ public class GameDatabaseContext implements AutoCloseable {
     public GameDatabaseContext() throws SQLException {
         String url = "jdbc:postgresql://localhost/refresh";
         this.conn = DriverManager.getConnection(url, "refresh", "refresh");
+    }
+
+    public void addOrUpdatePlanData(MinimalResource<MinimalPlanData> plan) throws SQLException {
+        // Remove old data (potentially from a previous scan)
+        String removePlanSql = "DELETE FROM \"GamePlanAssets\" WHERE \"PlanHash\" = ?";
+        try(PreparedStatement stmt = conn.prepareStatement(removePlanSql)) {
+            stmt.setString(1, plan.Hash);
+            stmt.executeUpdate(removePlanSql);
+        }
+
+        // Now insert
+        String insertPlanSql = 
+                """
+                INSERT INTO "GamePlanAssets" ("PlanHash", "Name", "Description", "IconHash")
+                VALUES (?, ?, ?, ?)
+                """;
+
+        try(PreparedStatement stmt = conn.prepareStatement(insertPlanSql)) {
+            stmt.setString(1, plan.Hash);
+            stmt.setString(2, plan.Content.Name);
+            stmt.setString(3, plan.Content.Description);
+            stmt.setString(4, plan.Content.Icon);
+        }
+
+        // Update contributor names separately since the're stored in their own table.
+        this.addOrUpdateContributorNames(plan.Hash, plan.Content.ContributorUsernames);
+    }
+
+    public void addOrUpdateLevelData(MinimalResource<MinimalLevelData> level) throws SQLException {
+        // Remove old data (potentially from a previous scan)
+        String removePlanSql = "DELETE FROM \"GameLevelAssets\" WHERE \"LevelHash\" = ?";
+        try(PreparedStatement stmt = conn.prepareStatement(removePlanSql)) {
+            stmt.setString(1, level.Hash);
+            stmt.executeUpdate(removePlanSql);
+        }
+
+        // Now insert
+        String insertPlanSql = 
+                """
+                INSERT INTO "GameLevelAssets" ("LevelHash", "HasValidWorldThing")
+                VALUES (?, ?)
+                """;
+
+        try(PreparedStatement stmt = conn.prepareStatement(insertPlanSql)) {
+            stmt.setString(1, level.Hash);
+            stmt.setBoolean(2, level.Content.HasValidWorldThing);
+        }
+
+        // Update contributor names separately since the're stored in their own table.
+        this.addOrUpdateContributorNames(level.Hash, level.Content.ContributorUsernames);
+    }
+
+    private void addOrUpdateContributorNames(String assetHash, ArrayList<String> usernames) throws SQLException {
+        // Clear previously saved usernames if there are any
+        String removeContributorsSql = "DELETE FROM \"AssetContributorRelations\" WHERE \"AssetHash\" = ?";
+        try(PreparedStatement stmt = conn.prepareStatement(removeContributorsSql)) {
+            stmt.setString(1, assetHash);
+            stmt.executeUpdate(removeContributorsSql);
+        }
+
+        // TODO lookup user ID for each one and then reference them in these relations
+        // (renames would be way smaller issues then, also less DB calls when fetching)
+
+        // TODO try to insert all names in just one DB call
+        for (String username : usernames) {
+            String insertContributorsSql = 
+                """
+                INSERT INTO "AssetContributorRelations" ("AssetHash", "Username")
+                VALUES (?, ?)
+                """;
+
+            try(PreparedStatement stmt = conn.prepareStatement(insertContributorsSql)) {
+                stmt.setString(1, assetHash);
+                stmt.setString(2, username);
+            }
+        }
     }
 
     private void deleteWorkers() throws SQLException {
@@ -90,6 +172,18 @@ public class GameDatabaseContext implements AutoCloseable {
         String sql = "SELECT \"JobId\", \"Class\", \"State\" FROM \"JobStates\" WHERE \"JobId\" = ? AND \"Class\" = 1";
         try(PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, jobId);
+
+            try(ResultSet rs = stmt.executeQuery()) {
+                if(rs.next()) return new PersistentJobState(rs);
+                return null;
+            }
+        }
+    }
+
+    public PersistentJobState getGameAssetPatchInfo(String hash) throws SQLException {
+        String sql = "SELECT \"WasScannedByCWLib\" FROM \"GameAssets\" WHERE \"AssetHash\" = ?";
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, hash);
 
             try(ResultSet rs = stmt.executeQuery()) {
                 if(rs.next()) return new PersistentJobState(rs);
