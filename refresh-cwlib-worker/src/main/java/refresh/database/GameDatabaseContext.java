@@ -15,6 +15,11 @@ import java.util.Arrays;
 public class GameDatabaseContext implements AutoCloseable {
     private final Connection conn;
 
+    public String[] requiredMigrations = new String[] {
+        "20250611223701_InitialFromRealm",
+        "WhateverAddsCWLibStuffToDBlol",
+    };
+
     static {
         try {
             Class.forName("org.postgresql.Driver");
@@ -23,9 +28,48 @@ public class GameDatabaseContext implements AutoCloseable {
         }
     }
 
-    public GameDatabaseContext() throws SQLException {
+    public GameDatabaseContext() throws SQLException, MissingDatabaseMigrationException {
         String url = "jdbc:postgresql://localhost/refresh";
         this.conn = DriverManager.getConnection(url, "refresh", "refresh");
+    }
+
+    // Call once on program init
+    public void EnsureMigrationsAreApplied() throws SQLException, MissingDatabaseMigrationException {
+        String sql = "SELECT MigrationId FROM \"__EFMigrationsHistory\"";
+        ArrayList<String> migrationIds = new ArrayList<>();
+
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            try(ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    migrationIds.add(rs.getString(1));
+                }
+            }
+        }
+
+        // Instead of immediately throwing on the first ID we find, we should instead gather all missing IDs
+        // and then list them all in the exception message.
+        ArrayList<String> missingIds = new ArrayList<>();
+        for (String expectedId : this.requiredMigrations) {
+
+            boolean idExists = false;
+            for (String migrationId : migrationIds) {
+                if (migrationId.equals(expectedId)) {
+                    idExists = true;
+                    break;
+                }
+            }
+
+            if (!idExists) {
+                missingIds.add(expectedId);
+            }
+        }
+        if (missingIds.size() > 0) {
+            String message = 
+                "The database is missing the following migrations: '" +
+                Arrays.toString(missingIds.toArray()) +
+                ". Please apply them by using 'dotnet ef database update' on the game server.";
+            throw new MissingDatabaseMigrationException(message);
+        }
     }
 
     public void addOrUpdatePlanData(MinimalResource<MinimalPlanData> plan) throws SQLException {
