@@ -3,6 +3,7 @@ package refresh.database;
 import refresh.database.models.PersistentJobState;
 import refresh.database.models.WorkerInfo;
 import refresh.exceptions.MissingDatabaseMigrationException;
+import refresh.helpers.CommonConstants;
 import refresh.resources.MinimalLevelData;
 import refresh.resources.MinimalPlanData;
 import refresh.resources.MinimalResource;
@@ -69,6 +70,15 @@ public class GameDatabaseContext implements AutoCloseable {
                 Arrays.toString(missingIds.toArray()) +
                 ". Please apply them by using 'dotnet ef database update' on the game server.";
             throw new MissingDatabaseMigrationException(message);
+        }
+    }
+
+    public void markAssetAsScanned(String hash) throws SQLException {
+        String sql = "UPDATE \"GameAssets\" SET \"ScannedByCWLibVersion\" = ? WHERE \"AssetHash\" = ?";
+
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, hash);
+            stmt.setInt(2, CommonConstants.CurrentCWLibWorkerVersion);
         }
     }
 
