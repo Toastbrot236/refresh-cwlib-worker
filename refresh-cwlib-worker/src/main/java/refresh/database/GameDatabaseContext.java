@@ -79,7 +79,6 @@ public class GameDatabaseContext implements AutoCloseable {
         return hashes;
     }
     
-    // TODO for now this assumes all hashes already have corresponding GameAssets. We don't ensure that for dependencies yet, only root assets.
     public void addOrUpdatePlanData(MinimalResource<MinimalPlanData> plan) throws SQLException {
         // Remove old data (potentially from a previous scan)
         String removePlanSql = "DELETE FROM \"GamePlanAssets\" WHERE \"PlanHash\" = ?";
@@ -88,43 +87,53 @@ public class GameDatabaseContext implements AutoCloseable {
             stmt.executeUpdate(removePlanSql);
         }
 
-        // Now insert
-        String insertPlanSql = 
+        // Delete old plan data so we can replace it with new one, and mark this asset as scanned by current version (if it has a GameAsset).
+        String sql = 
                 """
+                DELETE FROM "GamePlanAssets" WHERE "PlanHash" = ?";
+
                 INSERT INTO "GamePlanAssets" ("PlanHash", "Name", "Description", "IconHash")
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?);
+
+                UPDATE "GameAssets" SET "ScannedByCWLibVersion" = ? WHERE "AssetHash" = ?;
                 """;
 
-        try(PreparedStatement stmt = conn.prepareStatement(insertPlanSql)) {
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, plan.Hash);
-            stmt.setString(2, plan.Content.Name);
-            stmt.setString(3, plan.Content.Description);
-            stmt.setString(4, plan.Content.Icon);
+
+            stmt.setString(2, plan.Hash);
+            stmt.setString(3, plan.Content.Name);
+            stmt.setString(4, plan.Content.Description);
+            stmt.setString(5, plan.Content.Icon);
+
+            stmt.setInt(6, CommonConstants.CurrentCWLibWorkerVersion);
+            stmt.setString(7, plan.Hash);
         }
 
         // Update contributor names separately since the're stored in their own table.
         this.addOrUpdateContributorNames(plan.Hash, plan.Content.ContributorUsernames);
     }
 
-    // TODO for now this assumes all hashes already have corresponding GameAssets. We don't ensure that for dependencies yet, only root assets.
     public void addOrUpdateLevelData(MinimalResource<MinimalLevelData> level) throws SQLException {
-        // Remove old data (potentially from a previous scan)
-        String removePlanSql = "DELETE FROM \"GameLevelAssets\" WHERE \"LevelHash\" = ?";
-        try(PreparedStatement stmt = conn.prepareStatement(removePlanSql)) {
-            stmt.setString(1, level.Hash);
-            stmt.executeUpdate(removePlanSql);
-        }
-
-        // Now insert
+        // Delete old level data so we can replace it with new one, and mark this asset as scanned by current version (if it has a GameAsset).
         String insertPlanSql = 
                 """
+                DELETE FROM \"GameLevelAssets\" WHERE \"LevelHash\" = ?;
+
                 INSERT INTO "GameLevelAssets" ("LevelHash", "HasValidWorldThing")
-                VALUES (?, ?)
+                VALUES (?, ?);
+
+                UPDATE "GameAssets" SET "ScannedByCWLibVersion" = ? WHERE "AssetHash" = ?;
                 """;
 
         try(PreparedStatement stmt = conn.prepareStatement(insertPlanSql)) {
             stmt.setString(1, level.Hash);
-            stmt.setBoolean(2, level.Content.HasValidWorldThing);
+
+            stmt.setString(2, level.Hash);
+            stmt.setBoolean(3, level.Content.HasValidWorldThing);
+
+            stmt.setInt(4, CommonConstants.CurrentCWLibWorkerVersion);
+            stmt.setString(5, level.Hash);
         }
 
         // Update contributor names separately since the're stored in their own table.
