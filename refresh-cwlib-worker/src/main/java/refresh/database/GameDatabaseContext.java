@@ -145,30 +145,27 @@ public class GameDatabaseContext implements AutoCloseable {
     }
 
     private void addOrUpdateContributorNames(String assetHash, ArrayList<String> usernames) throws SQLException {
-        // Clear previously saved usernames if there are any
-        String removeContributorsSql = "DELETE FROM \"AssetContributorRelations\" WHERE \"AssetHash\" = ?";
-        try(PreparedStatement stmt = conn.prepareStatement(removeContributorsSql)) {
-            stmt.setString(1, assetHash);
-            stmt.executeUpdate(removeContributorsSql);
+        // Don't do anything if there aren't actually any usernames
+        if (usernames.size() <= 0) return;
+
+        int index = 0;
+        ArrayList<String> valueSqlParts = new ArrayList<>();
+        for (String username : usernames) {
+            valueSqlParts.add(String.format("\n(%s, %s, %d)", assetHash, username, index));
+            index++;
         }
 
-        // TODO lookup user ID for each one and then reference them in these relations
-        // (renames would be way smaller issues then, also less DB calls when fetching)
-
-        // TODO try to insert all names in just one DB call
-        for (String username : usernames) {
-            String insertContributorsSql = 
-                """
-                INSERT INTO "AssetContributorRelations" ("AssetHash", "Username")
-                VALUES (?, ?)
-                """;
-
-            try(PreparedStatement stmt = conn.prepareStatement(insertContributorsSql)) {
-                stmt.setString(1, assetHash);
-                stmt.setString(2, username);
-
-                stmt.executeQuery();
-            }
+        // Clear previously saved usernames if there are any, and then append insertions for every username,
+        // which we've built in the loop above.
+        String sql = String.format(
+            """
+                DELETE FROM \"AssetContributorRelations\" WHERE \"AssetHash\" = %s;
+                INSERT INTO \"AssetContributorRelations\" (\"AssetHash\", \"Username\", \"Index\")
+                VALUES %s;
+             """, assetHash, String.join(",", valueSqlParts));
+        
+        try(Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
         }
     }
 
