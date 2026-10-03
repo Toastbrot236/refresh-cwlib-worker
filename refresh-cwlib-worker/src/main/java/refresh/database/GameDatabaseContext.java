@@ -10,7 +10,7 @@ import refresh.resources.MinimalResource;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
 
 public class GameDatabaseContext implements AutoCloseable {
     private final Connection conn;
@@ -36,7 +36,50 @@ public class GameDatabaseContext implements AutoCloseable {
             stmt.setInt(2, CommonConstants.CurrentCWLibWorkerVersion);
         }
     }
+
+    /**
+     * Returns the hashes of all level root or photo plan assets we want to scan.
+     * If a GameAsset's ScannedByCWLibVersion is 0, it hasn't been scanned yet, and if it's above that but below our current version,
+     * its scan is outdated; the asset should be scanned again in both cases.
+     */
+    // TODO consider whether we should also clear data for assets no longer used by any levels or photos
+    public HashSet<String> getAssetHashesNeedingScans() throws SQLException {
+        String sql = 
+                """
+                SELECT concatenated."AssetHash" FROM (
+                    SELECT a."AssetHash", a."ScannedByCWLibVersion", l."UpdateDate" AS LastUsedAt
+                    FROM "GameAssets" AS a
+                    INNER JOIN "GameLevels" l
+                    ON a."AssetHash" = l."RootResource"
+
+                    UNION
+
+                    SELECT a."AssetHash", a."ScannedByCWLibVersion", p."PublishedAt" AS LastUsedAt
+                    FROM "GameAssets" AS a
+                    INNER JOIN "GamePhotos" p
+                    ON a."AssetHash" = p."PlanHash"
+                ) AS concatenated
+                WHERE concatenated."ScannedByCWLibVersion" < ?
+                ORDER BY concatenated.LastUsedAt DESC
+                LIMIT 100
+                """;
+                // No need to do any skipping, asset hashes handled here will automatically be set as handled later.
+                // Also, 100 is more than enough per minute, since we will also traverse and scan dependencies for all of them.
+
+        HashSet<String> hashes = new HashSet<>();
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, CommonConstants.CurrentCWLibWorkerVersion);
+
+            try(ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    hashes.add(rs.getString(1));
+                }
+            }
+        }
+        return hashes;
+    }
     
+    // TODO for now this assumes all hashes already have corresponding GameAssets. We don't ensure that for dependencies yet, only root assets.
     public void addOrUpdatePlanData(MinimalResource<MinimalPlanData> plan) throws SQLException {
         // Remove old data (potentially from a previous scan)
         String removePlanSql = "DELETE FROM \"GamePlanAssets\" WHERE \"PlanHash\" = ?";
@@ -63,6 +106,7 @@ public class GameDatabaseContext implements AutoCloseable {
         this.addOrUpdateContributorNames(plan.Hash, plan.Content.ContributorUsernames);
     }
 
+    // TODO for now this assumes all hashes already have corresponding GameAssets. We don't ensure that for dependencies yet, only root assets.
     public void addOrUpdateLevelData(MinimalResource<MinimalLevelData> level) throws SQLException {
         // Remove old data (potentially from a previous scan)
         String removePlanSql = "DELETE FROM \"GameLevelAssets\" WHERE \"LevelHash\" = ?";
@@ -163,7 +207,7 @@ public class GameDatabaseContext implements AutoCloseable {
         if(worker == null)
             return false;
 
-        String sql = "UPDATE \"Workers\" SET \"LastContact\" = ? WHERE \"WorkerId\" = ?";
+        String sql = "UPDATE \"Workers\" SET \"LastContact\" = ? WHERE \"WorkerId\" = ? ";
 
         try(PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
