@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 
 import org.apache.logging.log4j.Logger;
 
@@ -29,16 +30,16 @@ public abstract class ResourceHelper {
     }
 
     /**
-     * Deserializes plan/level data from the asset specified by hash, returns said data, and tries to write it into database if the given DB context is not null.
+     * Deserializes plan/level data from the assets specified by hash array, returns said data, and tries to write it into database if the given DB context is not null.
      * If wanted, will also do the same for all its dependencies.
      * Scan data which already exists in DB will be overwritten.
      */ 
-    public static MinimalResourceList DiscoverAndWriteAssetData(String rootHash, boolean includeDependencies, GameDatabaseContext database, Logger logger) {
+    public static MinimalResourceList DiscoverAndWriteAssetData(List<String> rootHashes, boolean includeDependencies, GameDatabaseContext database, Logger logger) {
         MinimalResourceList resourceList = new MinimalResourceList();
         int totalDeserializedAssetCount = 0;
 
         LinkedHashSet<String> queuedHashes = new LinkedHashSet<String>();
-        queuedHashes.add(rootHash); // start with root
+        queuedHashes.addAll(rootHashes); // start with root
 
         // Use this to avoid scanning the same dependency multiple times.
         // Can happen if the same dependency appears multiple times in the tree,
