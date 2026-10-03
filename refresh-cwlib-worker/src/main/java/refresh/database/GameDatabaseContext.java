@@ -108,6 +108,8 @@ public class GameDatabaseContext implements AutoCloseable {
 
             stmt.setInt(6, CommonConstants.CurrentCWLibWorkerVersion);
             stmt.setString(7, plan.Hash);
+
+            stmt.executeQuery();
         }
 
         // Update contributor names separately since the're stored in their own table.
@@ -134,6 +136,8 @@ public class GameDatabaseContext implements AutoCloseable {
 
             stmt.setInt(4, CommonConstants.CurrentCWLibWorkerVersion);
             stmt.setString(5, level.Hash);
+
+            stmt.executeQuery();
         }
 
         // Update contributor names separately since the're stored in their own table.
@@ -162,6 +166,8 @@ public class GameDatabaseContext implements AutoCloseable {
             try(PreparedStatement stmt = conn.prepareStatement(insertContributorsSql)) {
                 stmt.setString(1, assetHash);
                 stmt.setString(2, username);
+
+                stmt.executeQuery();
             }
         }
     }
