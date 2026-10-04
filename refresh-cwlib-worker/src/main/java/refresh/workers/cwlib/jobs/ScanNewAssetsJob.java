@@ -46,7 +46,6 @@ public class ScanNewAssetsJob extends WorkerJob {
         }
 
         MinimalResourceList resourceList = new MinimalResourceList();
-        int totalDeserializedAssetCount = 0;
 
         // Use this to avoid looking up and scanning the same asset multiple times.
         // Can happen if the same asset appears multiple times in a dependency tree,
@@ -116,14 +115,12 @@ public class ScanNewAssetsJob extends WorkerJob {
                 case LEVEL:
                     MinimalLevelData minLevel = new MinimalLevelData(resource.loadResource(RLevel.class));
                     resourceList.Levels.add(new MinimalResource<MinimalLevelData>(currentHash, minLevel));
-                    totalDeserializedAssetCount++;
 
                     logger.debug("Parsed level '" + currentHash + "' added to response.");
                     break;
                 case PLAN:
                     MinimalPlanData minPlan = new MinimalPlanData(resource.loadResource(RPlan.class));
                     resourceList.Plans.add(new MinimalResource<MinimalPlanData>(currentHash, minPlan));
-                    totalDeserializedAssetCount++;
                     
                     logger.debug("Parsed plan '" + currentHash + "' added to response.");
                     break;
@@ -137,27 +134,22 @@ public class ScanNewAssetsJob extends WorkerJob {
         }
 
         // Part 2: Write to database
-        // TODO mark all of these as scanned on their GameAssets
         // write plans
         for (MinimalResource<MinimalPlanData> planResponse : resourceList.Plans) {
             try {
                 context.Database.addOrUpdatePlanData(planResponse);
-                resourceList.SuccessfulDatabaseInsertionCount++;
             }
             catch (SQLException ex) {
                 logger.warn("Failed to write plan data '" + planResponse.Hash + "' to database: " + ex.getMessage());
-                resourceList.FailedDatabaseInsertionCount++;
             }
         }
         // write levels
         for (MinimalResource<MinimalLevelData> levelResponse : resourceList.Levels) {
             try {
                 context.Database.addOrUpdateLevelData(levelResponse);
-                resourceList.SuccessfulDatabaseInsertionCount++;
             }
             catch (SQLException ex) {
                 logger.warn("Failed to write level data '" + levelResponse.Hash + "' to database: " + ex.getMessage());
-                resourceList.FailedDatabaseInsertionCount++;
             }
         }
     }
