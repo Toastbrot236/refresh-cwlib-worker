@@ -29,8 +29,6 @@ public class GameDatabaseContext implements AutoCloseable {
 
     /**
      * Returns the hashes of all level root or photo plan assets we want to scan.
-     * If a GameAsset's WasScannedByCWLibWorker is 0, it hasn't been scanned yet, and if it's above that but below our current version,
-     * its scan is outdated; the asset should be scanned again in both cases.
      */
     // TODO consider whether we should also clear data for assets no longer used by any levels or photos
     public HashSet<String> getAssetHashesNeedingScans() throws SQLException {
@@ -53,8 +51,8 @@ public class GameDatabaseContext implements AutoCloseable {
                 ORDER BY concatenated.LastUsedAt DESC
                 LIMIT 100
                 """;
-                // No need to do any skipping, asset hashes handled here will automatically be set as handled later.
-                // Also, 100 is more than enough per minute, since we will also traverse and scan dependencies for all of them.
+                // No need to do any skipping, asset hashes fetched here will be set as scanned later by ScanNewAssetsJob.
+                // Also, 100 is enough per cycle, since we will also traverse and scan dependencies for all of them.
 
         HashSet<String> hashes = new HashSet<>();
 
@@ -76,7 +74,7 @@ public class GameDatabaseContext implements AutoCloseable {
             stmt.executeUpdate(removePlanSql);
         }
 
-        // Delete old plan data so we can replace it with new one, and mark this asset as scanned by current version (if it has a GameAsset).
+        // Delete old plan data so we can replace it with new one, and mark this asset as scanned (if it has a GameAsset).
         String sql = 
                 """
                 DELETE FROM "GamePlanAssets" WHERE "PlanHash" = ?";
@@ -101,12 +99,12 @@ public class GameDatabaseContext implements AutoCloseable {
             stmt.executeQuery();
         }
 
-        // Update contributor names separately since the're stored in their own table.
+        // Update contributor names separately since they're stored in their own table.
         this.addOrUpdateContributorNames(plan.Hash, plan.Content.ContributorUsernames);
     }
 
     public void addOrUpdateLevelData(MinimalResource<MinimalLevelData> level) throws SQLException {
-        // Delete old level data so we can replace it with new one, and mark this asset as scanned by current version (if it has a GameAsset).
+        // Delete old level data so we can replace it with new one, and mark this asset as scanned (if it has a GameAsset).
         String insertPlanSql = 
                 """
                 DELETE FROM \"GameLevelAssets\" WHERE \"LevelHash\" = ?;
@@ -140,7 +138,7 @@ public class GameDatabaseContext implements AutoCloseable {
         int index = 0;
         ArrayList<String> valueSqlParts = new ArrayList<>();
         for (String username : usernames) {
-            valueSqlParts.add(String.format("\n(%s, %s, %d)", assetHash, username, index));
+            valueSqlParts.add(String.format("(%s, %s, %d)", assetHash, username, index));
             index++;
         }
 
@@ -151,7 +149,7 @@ public class GameDatabaseContext implements AutoCloseable {
                 DELETE FROM \"AssetContributorRelations\" WHERE \"AssetHash\" = %s;
                 INSERT INTO \"AssetContributorRelations\" (\"AssetHash\", \"Username\", \"Index\")
                 VALUES %s;
-             """, assetHash, String.join(",", valueSqlParts));
+             """, assetHash, String.join(",\n", valueSqlParts));
         
         try(Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(sql);

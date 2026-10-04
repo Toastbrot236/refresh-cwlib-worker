@@ -87,7 +87,6 @@ public class ScanNewAssetsJob extends WorkerJob {
                 resource = new SerializedResource(data);
             }
             catch (Exception ex) {
-                // debug log because it's common for assets to reference assets which are not binary or just not handled by CWLib (e.g. textures)
                 logger.debug("Failed to parse '" + currentHash + "', probably not binary: " + ex.getMessage());
                 continue;
             }
@@ -104,8 +103,8 @@ public class ScanNewAssetsJob extends WorkerJob {
                     continue;
                 }
 
-                // Don't skip dependencies if we don't care about their type, because they might be binary and have their own dependencies,
-                // eventually with the types we want.
+                // Shouldn't filter out dependencies based on their ResourceDescriptor's resource type, because even if a dependency has a type we don't want here,
+                // it might still have dependencies of its own which are of types we do want here.
 
                 logger.debug("Queueing dependency hash '" + dependencyHash + "'");
                 queuedHashes.add(dependencyHash);
