@@ -14,7 +14,6 @@ import cwlib.resources.RLevel;
 import cwlib.resources.RPlan;
 import cwlib.types.SerializedResource;
 import cwlib.types.data.ResourceDescriptor;
-import cwlib.types.data.WrappedResource;
 import refresh.helpers.ResourceHelper;
 import refresh.resources.MinimalLevelData;
 import refresh.resources.MinimalPlanData;
@@ -112,27 +111,17 @@ public class ScanNewAssetsJob extends WorkerJob {
                 logger.debug("Queueing dependency hash '" + dependencyHash + "'");
                 queuedHashes.add(dependencyHash);
             }
-
-            WrappedResource wrapped;
-            try {
-                wrapped = new WrappedResource(resource);
-            }
-            catch (Exception ex) {
-                // debug log for a similar reason as with SerializedResource
-                logger.debug("Failed to parse inner data of '" + currentHash + "': " + ex.getMessage());
-                continue;
-            }
             
-            switch (wrapped.type) {
+            switch (resource.getResourceType()) {
                 case LEVEL:
-                    MinimalLevelData minLevel = new MinimalLevelData((RLevel)wrapped.resource);
+                    MinimalLevelData minLevel = new MinimalLevelData(resource.loadResource(RLevel.class));
                     resourceList.Levels.add(new MinimalResource<MinimalLevelData>(currentHash, minLevel));
                     totalDeserializedAssetCount++;
 
                     logger.debug("Parsed level '" + currentHash + "' added to response.");
                     break;
                 case PLAN:
-                    MinimalPlanData minPlan = new MinimalPlanData((RPlan)wrapped.resource);
+                    MinimalPlanData minPlan = new MinimalPlanData(resource.loadResource(RPlan.class));
                     resourceList.Plans.add(new MinimalResource<MinimalPlanData>(currentHash, minPlan));
                     totalDeserializedAssetCount++;
                     
@@ -141,7 +130,7 @@ public class ScanNewAssetsJob extends WorkerJob {
                 case STREAMING_CHUNK: // TODO
                 case ADVENTURE_CREATE_PROFILE: // TODO
                 default:
-                    logger.debug("Parsed asset '" + currentHash + "' has unknown type " + wrapped.type + ", skipping.");
+                    logger.debug("Parsed asset '" + currentHash + "' has unhandled type " + resource.getResourceType() + ", skipping.");
                     break;
 
             }
