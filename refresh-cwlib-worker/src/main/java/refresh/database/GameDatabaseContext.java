@@ -219,7 +219,7 @@ public class GameDatabaseContext implements AutoCloseable {
         if(worker == null)
             return false;
 
-        String sql = "UPDATE \"Workers\" SET \"LastContact\" = ? WHERE \"WorkerId\" = ? ";
+        String sql = "UPDATE \"Workers\" SET \"LastContact\" = ? WHERE \"WorkerId\" = ?";
 
         try(PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
@@ -237,18 +237,6 @@ public class GameDatabaseContext implements AutoCloseable {
         String sql = "SELECT \"JobId\", \"Class\", \"State\" FROM \"JobStates\" WHERE \"JobId\" = ? AND \"Class\" = 1";
         try(PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, jobId);
-
-            try(ResultSet rs = stmt.executeQuery()) {
-                if(rs.next()) return new PersistentJobState(rs);
-                return null;
-            }
-        }
-    }
-
-    public PersistentJobState getGameAssetPatchInfo(String hash) throws SQLException {
-        String sql = "SELECT \"WasScannedByCWLib\" FROM \"GameAssets\" WHERE \"AssetHash\" = ?";
-        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, hash);
 
             try(ResultSet rs = stmt.executeQuery()) {
                 if(rs.next()) return new PersistentJobState(rs);
