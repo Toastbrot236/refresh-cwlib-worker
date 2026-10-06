@@ -2,6 +2,7 @@ package refresh.database;
 
 import refresh.database.models.PersistentJobState;
 import refresh.database.models.WorkerInfo;
+import refresh.helpers.CommonConstants;
 import refresh.resources.MinimalLevelData;
 import refresh.resources.MinimalPlanData;
 import refresh.resources.MinimalResource;
@@ -29,25 +30,27 @@ public class GameDatabaseContext implements AutoCloseable {
 
     /**
      * Returns the hashes of all level root or photo plan assets we want to scan.
+     * If a GameAsset's ScannedByCWLibVersion is 0, it hasn't been scanned yet, and if it's above that but below our current version,
+     * its scan is outdated; the asset should be scanned again in both cases.
      */
     // TODO consider whether we should also clear data for assets no longer used by any levels or photos
     public HashSet<String> getAssetHashesNeedingScans() throws SQLException {
         String sql = 
                 """
                 SELECT concatenated."AssetHash" FROM (
-                    SELECT a."AssetHash", a."WasScannedByCWLibWorker", l."UpdateDate" AS LastUsedAt
+                    SELECT a."AssetHash", a."ScannedByCWLibVersion", l."UpdateDate" AS LastUsedAt
                     FROM "GameAssets" AS a
                     INNER JOIN "GameLevels" l
                     ON a."AssetHash" = l."RootResource"
 
                     UNION
 
-                    SELECT a."AssetHash", a."WasScannedByCWLibWorker", p."PublishedAt" AS LastUsedAt
+                    SELECT a."AssetHash", a."ScannedByCWLibVersion", p."PublishedAt" AS LastUsedAt
                     FROM "GameAssets" AS a
                     INNER JOIN "GamePhotos" p
                     ON a."AssetHash" = p."PlanHash"
                 ) AS concatenated
-                WHERE NOT concatenated."WasScannedByCWLibWorker"
+                WHERE concatenated."ScannedByCWLibVersion" < ?
                 ORDER BY concatenated.LastUsedAt DESC
                 LIMIT 100
                 """;
@@ -55,14 +58,15 @@ public class GameDatabaseContext implements AutoCloseable {
                 // Also, 100 is enough per cycle, since we will also traverse and scan dependencies for all of them.
 
         HashSet<String> hashes = new HashSet<>();
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, CommonConstants.CurrentCWLibWorkerVersion);
 
-        try(Statement stmt = conn.createStatement()) {
-            ResultSet rs = stmt.executeQuery(sql);
-            while (rs.next()) {
-                hashes.add(rs.getString(1));
+            try(ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    hashes.add(rs.getString(1));
+                }
             }
         }
-
         return hashes;
     }
     
@@ -82,7 +86,7 @@ public class GameDatabaseContext implements AutoCloseable {
                 INSERT INTO "GamePlanAssets" ("PlanHash", "Name", "Description", "IconHash")
                 VALUES (?, ?, ?, ?);
 
-                UPDATE "GameAssets" SET "WasScannedByCWLibWorker" = ? WHERE "AssetHash" = ?;
+                UPDATE "GameAssets" SET "ScannedByCWLibVersion" = ? WHERE "AssetHash" = ?;
                 """;
 
         try(PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -93,7 +97,7 @@ public class GameDatabaseContext implements AutoCloseable {
             stmt.setString(4, plan.Content.Description);
             stmt.setString(5, plan.Content.Icon);
 
-            stmt.setBoolean(6, true);
+            stmt.setInt(6, CommonConstants.CurrentCWLibWorkerVersion);
             stmt.setString(7, plan.Hash);
 
             stmt.executeQuery();
@@ -112,7 +116,7 @@ public class GameDatabaseContext implements AutoCloseable {
                 INSERT INTO "GameLevelAssets" ("LevelHash", "HasValidWorldThing")
                 VALUES (?, ?);
 
-                UPDATE "GameAssets" SET "WasScannedByCWLibWorker" = ? WHERE "AssetHash" = ?;
+                UPDATE "GameAssets" SET "ScannedByCWLibVersion" = ? WHERE "AssetHash" = ?;
                 """;
 
         try(PreparedStatement stmt = conn.prepareStatement(insertPlanSql)) {
@@ -121,7 +125,7 @@ public class GameDatabaseContext implements AutoCloseable {
             stmt.setString(2, level.Hash);
             stmt.setBoolean(3, level.Content.HasValidWorldThing);
 
-            stmt.setBoolean(4, true);
+            stmt.setInt(4, CommonConstants.CurrentCWLibWorkerVersion);
             stmt.setString(5, level.Hash);
 
             stmt.executeQuery();
