@@ -32,25 +32,26 @@ public class GameDatabaseContext implements AutoCloseable {
      * Returns the hashes of all level root or photo plan assets we want to scan.
      * If a GameAsset's ScannedByCWLibVersion is 0, it hasn't been scanned yet, and if it's above that but below our current version,
      * its scan is outdated; the asset should be scanned again in both cases.
+     * Excludes PSP assets since we still can't parse them.
      */
     // TODO consider whether we should also clear data for assets no longer used by any levels or photos
     public HashSet<String> getAssetHashesNeedingScans() throws SQLException {
         String sql = 
                 """
                 SELECT concatenated."AssetHash" FROM (
-                    SELECT a."AssetHash", a."ScannedByCWLibVersion", l."UpdateDate" AS LastUsedAt
+                    SELECT a."AssetHash", a."ScannedByCWLibVersion", a."IsPSP", l."UpdateDate" AS LastUsedAt
                     FROM "GameAssets" AS a
                     INNER JOIN "GameLevels" l
                     ON a."AssetHash" = l."RootResource"
 
                     UNION
 
-                    SELECT a."AssetHash", a."ScannedByCWLibVersion", p."PublishedAt" AS LastUsedAt
+                    SELECT a."AssetHash", a."ScannedByCWLibVersion", a."IsPSP", p."PublishedAt" AS LastUsedAt
                     FROM "GameAssets" AS a
                     INNER JOIN "GamePhotos" p
                     ON a."AssetHash" = p."PlanHash"
                 ) AS concatenated
-                WHERE concatenated."ScannedByCWLibVersion" < ?
+                WHERE concatenated."ScannedByCWLibVersion" < ? AND NOT concatenated."IsPSP"
                 ORDER BY concatenated.LastUsedAt DESC
                 LIMIT 100
                 """;
