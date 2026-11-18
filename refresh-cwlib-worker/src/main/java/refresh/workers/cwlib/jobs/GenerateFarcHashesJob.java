@@ -207,8 +207,8 @@ public class GenerateFarcHashesJob extends WorkerJob {
         byte[] transBin = englishTrans.build();
         SHA1 transHash = SHA1.fromBuffer(transBin);
         FileIO.write(dlcBin, this.dataStorePath + transHash.toString());
-        FileIO.write(dlcBin, this.debugDumpPath + "trans_" + dlcHash.toString() + ".bin");
-        englishTrans.export(this.debugDumpPath + "trans_" + dlcHash.toString() + ".json");
+        FileIO.write(dlcBin, this.debugDumpPath + "trans_" + transHash.toString() + ".bin");
+        englishTrans.export(this.debugDumpPath + "trans_" + transHash.toString() + ".json");
         pinFarc.add(transBin);
         pckFarc.add(transBin);
         map.newFileDBRow("custom/english.trans", 12345679);
@@ -242,10 +242,11 @@ public class GenerateFarcHashesJob extends WorkerJob {
         SHA1 dlcHeaderHash = SHA1.fromBuffer(dlcHeaderBin);
         FileIO.write(dlcHeaderBin, this.dataStorePath + dlcHeaderHash.toString());
         FileIO.write(dlcHeaderBin, this.debugDumpPath + "header_" + dlcHeaderHash.toString() + ".bin");
-        FileIO.write(dlcHeaderJson, this.debugDumpPath + "header_" + pckFarcHash.toString() + ".json");
+        FileIO.write(dlcHeaderJson, this.debugDumpPath + "header_" + dlcHeaderHash.toString() + ".json");
 
         FarcHashesData hashesData = new FarcHashesData();
         hashesData.DlcHeaderHash = dlcHeaderHash.toString();
+        hashesData.DlcResourceHash = dlcHash.toString();
         hashesData.PinFarcHash = pinFarcHash.toString();
         hashesData.PinResourceHash = pinsHash.toString();
         hashesData.PackFarcHash = pckFarcHash.toString();
