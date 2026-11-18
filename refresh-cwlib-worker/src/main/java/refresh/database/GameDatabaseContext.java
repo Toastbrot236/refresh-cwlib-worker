@@ -2,6 +2,7 @@ package refresh.database;
 
 import refresh.database.models.PersistentJobState;
 import refresh.database.models.WorkerInfo;
+import refresh.database.models.assets.FarcHashesData;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -94,6 +95,40 @@ public class GameDatabaseContext implements AutoCloseable {
             try(ResultSet rs = stmt.executeQuery()) {
                 if(rs.next()) return new PersistentJobState(rs);
                 return null;
+            }
+        }
+    }
+
+    public int saveFarcHashes(FarcHashesData hashes) throws SQLException {
+        hashes.GeneratedAt = Timestamp.valueOf(LocalDateTime.now());
+
+        String sql =
+                """
+                INSERT INTO "FarcHashesData" ("GeneratedAt", "GeneratedUsingJobVersion", "DlcHeaderHash", "DlcResourceHash",
+                    "PinFarcHash", "PinResourceHash", "PackFarcHash", "PackResourceHash", "MapHash", "EnglishTransTableHash")
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                RETURNING "Version"
+                """;
+
+        try(PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setTimestamp(1, hashes.GeneratedAt);
+            stmt.setInt(2, hashes.GeneratedUsingJobVersion);
+            stmt.setString(3, hashes.DlcHeaderHash);
+            stmt.setString(4, hashes.DlcResourceHash);
+            stmt.setString(5, hashes.PinFarcHash);
+            stmt.setString(6, hashes.PinResourceHash);
+            stmt.setString(7, hashes.PackFarcHash);
+            stmt.setString(8, hashes.PackResourceHash);
+            stmt.setString(9, hashes.MapHash);
+            stmt.setString(10, hashes.EnglishTransTableHash);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    hashes.Version = rs.getInt(1);
+                    return hashes.Version;
+                } else {
+                    throw new SQLException("Failed to insert farc hashes");
+                }
             }
         }
     }

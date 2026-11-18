@@ -1,9 +1,11 @@
 package refresh.resources;
-
+import cwlib.enums.Revisions;
 import cwlib.io.Serializable;
 import cwlib.io.serializer.Serializer;
+import cwlib.io.streams.MemoryOutputStream;
 import cwlib.types.data.ResourceDescriptor;
 import cwlib.types.data.SHA1;
+import cwlib.types.data.Revision;
 
 public class DLCHeaderFile implements Serializable {
     public long Revision; // what exactly is this?
@@ -30,11 +32,14 @@ public class DLCHeaderFile implements Serializable {
         this.Resource = serializer.resource(this.Resource, this.Resource.getType());
     }
 
-    public void toFile(boolean toJson) {
-
+    public byte[] build() {
+        MemoryOutputStream output = new MemoryOutputStream(this.getAllocatedSize());
+        Serializer serializer = new Serializer(output, new Revision(Revisions.LBP2_MAX));
+        this.serialize(serializer);
+        return output.getBuffer();
     }
 
     public int getAllocatedSize() {
-        return 0x100; // idk return something
+        return 500;
     }
 }
