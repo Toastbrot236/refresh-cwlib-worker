@@ -11,6 +11,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 public class TestJob extends WorkerJob {
+    public TestJob() {
+        this.isJobStateRequired = true;
+    }
+
     @Override
     protected Class<?> getJobStateType() {
         return AssetListState.class;

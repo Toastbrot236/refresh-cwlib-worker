@@ -5,6 +5,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import refresh.database.GameDatabaseContext;
 import refresh.database.models.PersistentJobState;
+import refresh.workers.cwlib.jobs.GenerateFarcHashesJob;
 import refresh.workers.cwlib.jobs.TestJob;
 
 import java.sql.SQLException;
@@ -32,6 +33,7 @@ public class WorkerManager {
         }
 
         this._jobs.add(new TestJob());
+        this._jobs.add(new GenerateFarcHashesJob());
     }
 
     private void runWorkCycle() throws Exception {
@@ -39,12 +41,13 @@ public class WorkerManager {
             for (WorkerJob job : this._jobs) {
                 PersistentJobState jobState = context.Database.getJobState(job.getJobId());
 
-                if(jobState == null) {
+                if(job.isJobStateRequired && jobState == null) {
                     logger.debug("Job {} has no state in the db, waiting for Refresh to give us stuff to work on...", job.getJobId());
                     continue;
                 }
-
-                job.jobState = this._mapper.readValue(jobState.State, job.getJobStateType());
+                else if (jobState != null) {
+                    job.jobState = this._mapper.readValue(jobState.State, job.getJobStateType());
+                }
 
                 job.executeJob(context);
             }

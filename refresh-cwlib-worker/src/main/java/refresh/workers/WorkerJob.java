@@ -7,6 +7,7 @@ public abstract class WorkerJob {
 
     protected abstract Class<?> getJobStateType();
 
+    protected boolean isJobStateRequired = false;
     protected Object jobState;
 
     public void setJobState(Object jobState) {
