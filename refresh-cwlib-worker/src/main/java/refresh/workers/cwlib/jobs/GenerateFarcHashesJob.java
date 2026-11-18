@@ -28,11 +28,13 @@ import cwlib.structs.slot.Slot;
 import cwlib.structs.slot.SlotID;
 import cwlib.types.SerializedResource;
 import cwlib.types.archives.SaveArchive;
+import cwlib.types.archives.SaveKey;
 import cwlib.types.data.GUID;
 import cwlib.types.data.ResourceDescriptor;
 import cwlib.types.data.Revision;
 import cwlib.types.data.SHA1;
 import cwlib.types.databases.FileDB;
+import cwlib.types.databases.FileDBRow;
 import cwlib.util.FileIO;
 import cwlib.util.GsonUtils;
 import refresh.database.models.assets.FarcHashesData;
@@ -56,6 +58,8 @@ public class GenerateFarcHashesJob extends WorkerJob {
     public void executeJob(WorkContext context) throws IOException {
         if (complete) return;
 
+        // CREATE TRANS TABLE RESOURCE
+
         RTranslationTable englishTrans = new RTranslationTable();
         englishTrans.add(420, "Epic pin name!!");
         englishTrans.add(421, "Epic pin desk!!");
@@ -64,23 +68,26 @@ public class GenerateFarcHashesJob extends WorkerJob {
         englishTrans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PACK_LEVEL_NAME"), "Epic pack leval name!!");
         englishTrans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PACK_LEVEL_DESC"), "Epic pack leval deskriptoin!!");
 
+        // CREATE DLC RESOURCE
+        RDLC dlcs = new RDLC();
+
         DLCGUID testDlcGuid1 = new DLCGUID();
         testDlcGuid1.guid = new GUID(18451); // lbp1 star sticker
         testDlcGuid1.flags = DLCFileFlags.OWNED;
+        dlcs.guids.add(testDlcGuid1);
 
         DLCFile testDlcFile1 = new DLCFile();
         testDlcFile1.directory = "";
-        testDlcFile1.file = "dccomics_3.edat";
-        testDlcFile1.contentID = "LBPDLCWBDCCK0003";
+        testDlcFile1.file = "superepicdlclel.edat";
+        testDlcFile1.contentID = "AMONGUSDLC";
         testDlcFile1.inGameCommerceID = "";
         testDlcFile1.categoryID = "";
         testDlcFile1.flags = DLCFileFlags.OWNED;
-        testDlcFile1.typeMask = 6329151;
+        testDlcFile1.typeMask = 16;
         testDlcFile1.guids.add(new GUID(18451)); // lbp1 star sticker
-
-        RDLC dlcs = new RDLC();
-        dlcs.guids.add(testDlcGuid1);
         dlcs.files.add(testDlcFile1);
+
+        // CREATE LEVEL PACK + SLOT
 
         Slot testSlot1 = new Slot(
             new SlotID(SlotType.DLC_LEVEL, 2),
@@ -118,6 +125,8 @@ public class GenerateFarcHashesJob extends WorkerJob {
         testPack1.timestamp = 0;
         testPack1.slot = testSlot1;
 
+        // CREATE GROUP PACK + SLOT
+
         Slot testSlot2 = new Slot(
             new SlotID(SlotType.DLC_PACK, 2),
             null,
@@ -150,14 +159,18 @@ public class GenerateFarcHashesJob extends WorkerJob {
         Pack testPack2 = new Pack();
         testPack2.contentsType = ContentsType.GROUP;
         testPack2.mesh = new ResourceDescriptor(CommonMeshes.POLAROID_GUID, ResourceType.MESH);
-        testPack2.contentID = "LBPDLCWBDCCK0003";
+        testPack2.contentID = "AMONGUSDLC";
         testPack2.timestamp = 1387407600;
         testPack2.slot = testSlot2;
+
+        // CREATE PACKS RESOURCE
 
         ArrayList<Pack> packList = new ArrayList<>();
         packList.add(testPack1);
         packList.add(testPack2);
         RPacks packs = new RPacks(packList);
+
+        // CREATE PINS RESOURCE
 
         RPins pins = new RPins();
         Pin testPin1 = new Pin();
@@ -172,37 +185,62 @@ public class GenerateFarcHashesJob extends WorkerJob {
         testPin1.trophyToUnlock = 65;
         pins.pins.add(testPin1);
 
+        // CREATE MAP AND FARCS
+
         SaveArchive pinFarc = new SaveArchive(new Revision(Revisions.LBP2_MAX), 0x4);
         SaveArchive pckFarc = new SaveArchive(new Revision(Revisions.LBP2_MAX), 0x4);
         FileDB map = new FileDB(0x100);
 
+        // SERIALIZE PINS RESOURCE
+
         byte[] pinsBin = SerializedResource.compress(pins, new Revision(Revisions.LBP2_MAX), CompressionFlags.USE_NO_COMPRESSION);
         byte[] pinsJson = GsonUtils.toJSON(pins, new Revision(Revisions.LBP2_MAX)).getBytes();
         SHA1 pinsHash = SHA1.fromBuffer(pinsBin);
+
         FileIO.write(pinsBin, this.dataStorePath + pinsHash.toString());
         FileIO.write(pinsBin, this.debugDumpPath + "pins_" + pinsHash.toString() + ".bin");
         FileIO.write(pinsJson, debugDumpPath + "pins_" + pinsHash.toString() + ".json");
+
         pinFarc.add(pinsBin);
-        map.newFileDBRow("custom/pins.pin", 12345676);
+        map.newFileDBRow(new FileDBRow(map, dataStorePath + "custom/pins.pin", System.currentTimeMillis() / 1000, pinsBin.length, pinsHash, new GUID(12345676)));
+
+        SaveKey pinSaveKey = pinFarc.getKey();
+        pinSaveKey.setRootHash(pinsHash);
+        pinSaveKey.setRootType(ResourceType.PINS);
+
+        // SERIALIZE PACK RESOURCE
 
         byte[] packBin = SerializedResource.compress(packs, new Revision(Revisions.LBP2_MAX), CompressionFlags.USE_NO_COMPRESSION);
         byte[] packJson = GsonUtils.toJSON(packs, new Revision(Revisions.LBP2_MAX)).getBytes();
         SHA1 packHash = SHA1.fromBuffer(packBin);
+
         FileIO.write(packBin, this.dataStorePath + packHash.toString());
         FileIO.write(packBin, this.debugDumpPath + "pack_" + packHash.toString() + ".bin");
         FileIO.write(packJson, this.debugDumpPath + "pack_" + packHash.toString() + ".json");
+
         pckFarc.add(packBin);
         map.newFileDBRow("custom/pack.pck", 12345677);
+        map.newFileDBRow(new FileDBRow(map, dataStorePath + "custom/pack.pck", System.currentTimeMillis() / 1000, packBin.length, packHash, new GUID(12345677)));
+
+        SaveKey packSaveKey = pckFarc.getKey();
+        packSaveKey.setRootHash(packHash);
+        packSaveKey.setRootType(ResourceType.PACKS);
+
+        // SERIALIZE DLC RESOURCE
 
         byte[] dlcBin = SerializedResource.compress(dlcs, new Revision(Revisions.LBP2_MAX), CompressionFlags.USE_NO_COMPRESSION);
         byte[] dlcJson = GsonUtils.toJSON(dlcs, new Revision(Revisions.LBP2_MAX)).getBytes();
         SHA1 dlcHash = SHA1.fromBuffer(dlcBin);
+
         FileIO.write(dlcBin, this.dataStorePath + dlcHash.toString());
         FileIO.write(dlcBin, this.debugDumpPath + "dlc_" + dlcHash.toString() + ".bin");
         FileIO.write(dlcJson, this.debugDumpPath + "dlc_" + dlcHash.toString() + ".json");
+
         pinFarc.add(dlcBin);
         pckFarc.add(dlcBin);
-        map.newFileDBRow("custom/deeelcee.dlc", 12345678);
+        map.newFileDBRow(new FileDBRow(map, dataStorePath + "custom/deeelcee.dlc", System.currentTimeMillis() / 1000, dlcBin.length, dlcHash, new GUID(12345678)));
+
+        // SERIALIZE TRANS TABLE RESOURCE
 
         byte[] transBin = englishTrans.build();
         SHA1 transHash = SHA1.fromBuffer(transBin);
@@ -211,25 +249,33 @@ public class GenerateFarcHashesJob extends WorkerJob {
         englishTrans.export(this.debugDumpPath + "trans_" + transHash.toString() + ".json");
         pinFarc.add(transBin);
         pckFarc.add(transBin);
-        map.newFileDBRow("custom/english.trans", 12345679);
+        map.newFileDBRow(new FileDBRow(map, dataStorePath + "custom/english.trans", System.currentTimeMillis() / 1000, transBin.length, transHash, new GUID(12345679)));
+
+        // SERIALIZE MAP
 
         byte[] mapBin = map.build();
         SHA1 mapHash = SHA1.fromBuffer(mapBin);
         FileIO.write(mapBin, this.dataStorePath + mapHash.toString());
         FileIO.write(mapBin, this.debugDumpPath + "db_" + mapHash.toString() + ".map");
 
+        // SERIALIZE PIN FARC
+
         byte[] pinFarcBin = pinFarc.build(false);
         SHA1 pinFarcHash = SHA1.fromBuffer(pinFarcBin);
         FileIO.write(pinFarcBin, this.dataStorePath + pinFarcHash.toString());
         FileIO.write(pinFarcBin, this.debugDumpPath + "pin_" + pinFarcHash.toString() + ".farc");
+
+        // SERIALIZE PACK FARC
 
         byte[] pckFarcBin = pckFarc.build(false);
         SHA1 pckFarcHash = SHA1.fromBuffer(pckFarcBin);
         FileIO.write(pckFarcBin, this.dataStorePath + pckFarcHash.toString());
         FileIO.write(pckFarcBin, this.debugDumpPath + "pck_" + pckFarcHash.toString() + ".farc");
 
+        // CREATE DLC HEADER
+
         DLCHeaderFile header = new DLCHeaderFile();
-        header.Revision = 0;
+        header.Revision = 4; // FARC revision?
         header.BranchDescription = 0;
         for (int i = 0; i < header.TranslationTables.length; i++) {
             header.TranslationTables[i] = transHash; // lol
@@ -237,12 +283,16 @@ public class GenerateFarcHashesJob extends WorkerJob {
         header.DatabaseHash = mapHash;
         header.Resource = new ResourceDescriptor(dlcHash, ResourceType.DOWNLOADABLE_CONTENT);
 
+        // SERIALIZE DLC HEADER
+
         byte[] dlcHeaderBin = header.build();
         byte[] dlcHeaderJson = GsonUtils.toJSON(header, new Revision(Revisions.LBP2_MAX)).getBytes();
         SHA1 dlcHeaderHash = SHA1.fromBuffer(dlcHeaderBin);
         FileIO.write(dlcHeaderBin, this.dataStorePath + dlcHeaderHash.toString());
         FileIO.write(dlcHeaderBin, this.debugDumpPath + "header_" + dlcHeaderHash.toString() + ".bin");
         FileIO.write(dlcHeaderJson, this.debugDumpPath + "header_" + dlcHeaderHash.toString() + ".json");
+
+        // CREATE FARC HASHES DB ENTITY
 
         FarcHashesData hashesData = new FarcHashesData();
         hashesData.DlcHeaderHash = dlcHeaderHash.toString();
