@@ -133,6 +133,22 @@ public class GameDatabaseContext implements AutoCloseable {
         }
     }
 
+    public int getHighestFarcDataVersion() throws SQLException {
+        String sql = "SELECT \"Version\" FROM \"FarcHashesData\" ORDER BY \"Version\" DESC LIMIT 1";
+        try(ResultSet rs = conn.createStatement().executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            } else {
+                throw new SQLException("Failed to get highest farc data version: no rows!");
+            }
+            /*
+            return rs.next()
+                ? rs.getInt(1)
+                : 0; // If there are no rows, return 0
+            */
+        }
+    }
+
     @Override
     public void close() throws SQLException {
         if(this.conn != null)

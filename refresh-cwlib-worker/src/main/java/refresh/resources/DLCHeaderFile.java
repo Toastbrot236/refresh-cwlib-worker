@@ -40,6 +40,6 @@ public class DLCHeaderFile implements Serializable {
     }
 
     public int getAllocatedSize() {
-        return 500;
+        return 80 + (this.TranslationTables.length * 20);
     }
 }
