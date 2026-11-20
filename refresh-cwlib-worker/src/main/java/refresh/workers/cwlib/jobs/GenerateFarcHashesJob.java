@@ -28,7 +28,6 @@ import cwlib.structs.slot.Slot;
 import cwlib.structs.slot.SlotID;
 import cwlib.types.SerializedResource;
 import cwlib.types.archives.Fart;
-import cwlib.types.archives.SaveArchive;
 import cwlib.types.data.GUID;
 import cwlib.types.data.ResourceDescriptor;
 import cwlib.types.data.Revision;
@@ -41,6 +40,7 @@ import refresh.database.models.assets.FarcHashesData;
 import refresh.resources.DLCHeaderFile;
 import refresh.resources.MinimalFart;
 import refresh.resources.MinimalFileDB;
+import refresh.resources.RemoteFart;
 import refresh.workers.WorkContext;
 import refresh.workers.WorkerJob;
 import refresh.workers.cwlib.state.AssetListState;
@@ -69,8 +69,8 @@ public class GenerateFarcHashesJob extends WorkerJob {
             return;
         }
 
-        SaveArchive pinFarc = new SaveArchive(new Revision(Revisions.LBP2_MAX), 4);
-        SaveArchive packFarc = new SaveArchive(new Revision(Revisions.LBP2_MAX), 4);
+        RemoteFart pinFarc = new RemoteFart();
+        RemoteFart packFarc = new RemoteFart();
         FileDB map = new FileDB(0x100); // taken from LBP2 brg_patch.map
         RTranslationTable englishTrans = this.createTestTransTable();
         RPins pins = this.createTestPins();
@@ -80,20 +80,30 @@ public class GenerateFarcHashesJob extends WorkerJob {
         SHA1 pinResourceHash = this.writeNormalResource("pins.pin", pins, map, new Fart[] {pinFarc, packFarc});
         SHA1 packResourceHash = this.writeNormalResource("packs.pck", packs, map, new Fart[] {pinFarc, packFarc});
 
+        /*
         pinFarc.getKey().setRootHash(pinResourceHash);
         pinFarc.getKey().setRootType(ResourceType.PINS);
         packFarc.getKey().setRootHash(packResourceHash);
         packFarc.getKey().setRootType(ResourceType.PACKS);
+        */
 
         RDLC dlcs = this.createTestDlcResource(new SHA1[] {englishTransHash, pinResourceHash, packResourceHash});
         SHA1 dlcResourceHash = this.writeDlcResource("dlcs.dlc", dlcs, map, new Fart[] {pinFarc, packFarc});
 
         SHA1 mapHash = this.writeMap("database.map", map, new Fart[] {pinFarc, packFarc});
-        SHA1 pinFarcHash = this.writeFarc("pins.farc", pinFarc);
-        SHA1 packFarcHash = this.writeFarc("packs.farc", packFarc);
 
         DLCHeaderFile header = this.createTestDlcHeader(dlcResourceHash, ResourceType.DOWNLOADABLE_CONTENT, englishTransHash, mapHash);
+        DLCHeaderFile pinHeader = this.createTestDlcHeader(pinResourceHash, ResourceType.PINS, englishTransHash, mapHash);
+        DLCHeaderFile packHeader = this.createTestDlcHeader(packResourceHash, ResourceType.PACKS, englishTransHash, mapHash);
+
+        SHA1 pinHeaderHash = this.writeDlcHeader("pin_header.bin", pinHeader);
+        SHA1 packHeaderHash = this.writeDlcHeader("pack_header.bin", packHeader);
         SHA1 dlcHeaderHash = this.writeDlcHeader("dlc_header.bin", header);
+
+        pinFarc.headerHash = pinHeaderHash;
+        packFarc.headerHash = packHeaderHash;
+        SHA1 pinFarcHash = this.writeFarc("pins.farc", pinFarc);
+        SHA1 packFarcHash = this.writeFarc("packs.farc", packFarc);
 
         FarcHashesData hashesData = new FarcHashesData();
         hashesData.DlcHeaderHash = dlcHeaderHash.toString();
@@ -123,6 +133,8 @@ public class GenerateFarcHashesJob extends WorkerJob {
 
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PIN_NAME"), "Epic pin name!!");
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PIN_DESC"), "Epic pin desk!!");
+        trans.add(RTranslationTable.makeLamsKeyID("DAVINCI_THEME_NAME"), "Da vinki???");
+        trans.add(RTranslationTable.makeLamsKeyID("DAVINCI_THEME_DESC"), "lololol");
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PACK_GROUP_NAME"), "Epic pack group name!!");
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PACK_GROUP_DESC"), "Epic pack group descedfressfsd lol!!");
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PACK_LEVEL_NAME"), "Epic pack leval name!!");
@@ -163,7 +175,7 @@ public class GenerateFarcHashesJob extends WorkerJob {
         testSlot1.primaryLinkLevel = null;
         testSlot1.initiallyLocked = false;
         testSlot1.shareable = true;
-        testSlot1.developerLevelType = LevelType.BOSS;
+        testSlot1.developerLevelType = LevelType.MAIN_PATH;
         testSlot1.name = "lol";
         testSlot1.description = "LEL";
         testSlot1.labels = new Label[1];
@@ -174,13 +186,13 @@ public class GenerateFarcHashesJob extends WorkerJob {
         testSlot1.crossCompatible = false;
         testSlot1.showOnPlanet = true;
         testSlot1.livesOverride = 40;
-        testSlot1.group = new SlotID(SlotType.DLC_PACK, 2);
+        testSlot1.group = new SlotID(SlotType.DLC_PACK, 3);
 
         Pack testPack1 = new Pack();
         testPack1.contentsType = ContentsType.LEVEL;
         testPack1.mesh = testPack1.contentsType.getBadgeMesh();
-        testPack1.contentID = "LBPDLCAMOGUS0003";
-        testPack1.timestamp = System.currentTimeMillis() / 1000;
+        testPack1.contentID = "LBPDLCAMOGUS0001";
+        testPack1.timestamp = 1795204244;
         testPack1.slot = testSlot1;
 
         // CREATE GROUP PACK + SLOT
@@ -213,9 +225,9 @@ public class GenerateFarcHashesJob extends WorkerJob {
 
         Pack testPack2 = new Pack();
         testPack2.contentsType = ContentsType.GROUP;
-        testPack2.mesh = testPack1.contentsType.getBadgeMesh();
-        testPack2.contentID = "LBPDLCAMOGUS0003";
-        testPack2.timestamp = System.currentTimeMillis() / 1000;
+        testPack2.mesh = testPack2.contentsType.getBadgeMesh();
+        testPack2.contentID = "LBPDLCAMOGUS0002";
+        testPack2.timestamp = 1795204244;
         testPack2.slot = testSlot2;
 
         // CREATE PACKS RESOURCE
@@ -232,24 +244,38 @@ public class GenerateFarcHashesJob extends WorkerJob {
         DLCFile testDlcFile1 = new DLCFile();
         testDlcFile1.directory = "";
         testDlcFile1.file = "";
-        testDlcFile1.contentID = "LBPDLCAMOGUS0003";
+        testDlcFile1.contentID = "LBPDLCAMOGUS0001";
         testDlcFile1.inGameCommerceID = "";
         testDlcFile1.categoryID = "";
-        testDlcFile1.flags = DLCFileFlags.OWNED;
+        testDlcFile1.flags = 17; //DLCFileFlags.OWNED;
         testDlcFile1.typeMask = 16;
 
+        DLCFile testDlcFile2 = new DLCFile();
+        testDlcFile2.directory = "";
+        testDlcFile2.file = "";
+        testDlcFile2.contentID = "LBPDLCAMOGUS0002";
+        testDlcFile2.inGameCommerceID = "";
+        testDlcFile2.categoryID = "";
+        testDlcFile2.flags = 17; //DLCFileFlags.OWNED;
+        testDlcFile2.typeMask = 16;
+
         dlcs.files.add(testDlcFile1);
+        dlcs.files.add(testDlcFile2);
 
         HashSet<GUID> guids = new HashSet<>();
         //guids.add(new GUID(18451));
+        guids.add(new GUID(142846)); // root level guid of the one level
 
+        /*
         for (SHA1 hash : hashes) {
             // Generate guids for our hashes
             guids.add(new GUID(RTranslationTable.makeLamsKeyID(hash.toString())));
         }
+        */
 
         for (GUID guid : guids) {
             testDlcFile1.guids.add(guid);
+            testDlcFile2.guids.add(guid);
 
             DLCGUID testDlcGuid1 = new DLCGUID();
             testDlcGuid1.guid = guid;
@@ -368,8 +394,8 @@ public class GenerateFarcHashesJob extends WorkerJob {
         return this.writeFile(filename, binary, json, null, null);
     }
 
-    public SHA1 writeFarc(String filename, SaveArchive farc) {
-        byte[] binary = farc.build(false);
+    public SHA1 writeFarc(String filename, RemoteFart farc) {
+        byte[] binary = farc.build();
         String json = GsonUtils.toJSON(new MinimalFart(farc), new Revision(Revisions.LBP2_MAX));
 
         return this.writeFile(filename, binary, json, null, null);
@@ -388,7 +414,7 @@ public class GenerateFarcHashesJob extends WorkerJob {
         FileIO.write(binary, this.debugDumpPath + "/" + this.currentFarcDataVersion + "/" + filename + "_" + hash.toString() + ".bin");
 
         if (map != null) {
-            FileDBRow row = new FileDBRow(map, "/custom/" + filename, System.currentTimeMillis() / 1000, binary.length, hash,
+            FileDBRow row = new FileDBRow(map, "/gamedata/data/" + filename, 1795204244, binary.length, hash,
                 new GUID(RTranslationTable.makeLamsKeyID(hash.toString()) /* lol */));
 
             map.newFileDBRow(row);
