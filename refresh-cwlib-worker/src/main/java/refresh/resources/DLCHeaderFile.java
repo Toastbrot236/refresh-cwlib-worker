@@ -29,7 +29,7 @@ public class DLCHeaderFile implements Serializable {
         }
         
         this.DatabaseHash = serializer.sha1(this.DatabaseHash);
-        this.Resource = serializer.resource(this.Resource, this.Resource.getType());
+        this.Resource = serializer.resource(this.Resource, this.Resource.getType(), true, true, true);
     }
 
     public byte[] build() {
