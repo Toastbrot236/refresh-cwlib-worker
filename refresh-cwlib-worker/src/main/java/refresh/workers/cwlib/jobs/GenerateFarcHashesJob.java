@@ -292,8 +292,9 @@ public class GenerateFarcHashesJob extends WorkerJob {
     }
 
     public SHA1 writeDlcResource(String filename, RDLC dlc, FileDB map, Fart[] farcs) {
-        // byte[] binary = SerializedResource.compress(dlc, new Revision(Revisions.LBP2_MAX), CompressionFlags.USE_NO_COMPRESSION);
+        byte[] binary = SerializedResource.compress(dlc, new Revision(Revisions.LBP2_MAX), CompressionFlags.USE_NO_COMPRESSION);
 
+        /*
         // Serialize as text instead
         String textDlcRootTemplate =
         """
@@ -351,11 +352,13 @@ public class GenerateFarcHashesJob extends WorkerJob {
                                     dlcFile.inGameCommerceID, dlcFile.categoryID, dlcFile.flags, dlcFile.guids.size(),
                                     textDlcFileGuids, dlcFile.typeMask);
         }
-
         String dlcText = String.format(textDlcRootTemplate, dlc.guids.size(), textDlcGuids, dlc.files.size(), textDlcFiles);
+
+        */
+
         String dlcJson = GsonUtils.toJSON(dlc, new Revision(Revisions.LBP2_MAX));
 
-        return writeFile(filename, dlcText.getBytes(), dlcJson, map, farcs);
+        return writeFile(filename, binary, dlcJson, map, farcs);
     }
 
     public SHA1 writeDlcHeader(String filename, DLCHeaderFile header) {
