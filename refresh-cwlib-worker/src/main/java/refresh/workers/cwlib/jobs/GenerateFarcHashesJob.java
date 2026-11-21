@@ -168,22 +168,26 @@ public class GenerateFarcHashesJob extends WorkerJob {
         testSlot1.initiallyLocked = false;
         testSlot1.shareable = true;
         testSlot1.developerLevelType = LevelType.MAIN_PATH;
-        testSlot1.name = "lol";
-        testSlot1.description = "LEL";
-        testSlot1.labels = new Label[1];
-        testSlot1.labels[0] = new Label((int)RTranslationTable.makeLamsKeyID("LABEL_Easy"), 0); // why do i have to int cast a LAMS key?
+        testSlot1.name = "";
+        testSlot1.description = "";
+        testSlot1.labels = new Label[0];
         testSlot1.collectabubblesContained = new Collectabubble[0];
-        testSlot1.collectabubblesRequired = new Collectabubble[0];
+        testSlot1.collectabubblesRequired = new Collectabubble[]
+        {
+            new Collectabubble(),
+            new Collectabubble(),
+            new Collectabubble()
+        };
         testSlot1.moveRecommended = true;
         testSlot1.crossCompatible = false;
         testSlot1.showOnPlanet = true;
-        testSlot1.livesOverride = 40;
+        testSlot1.livesOverride = 0;
         testSlot1.group = new SlotID(SlotType.DLC_PACK, 3);
 
         Pack testPack1 = new Pack();
         testPack1.contentsType = ContentsType.LEVEL;
         testPack1.mesh = testPack1.contentsType.getBadgeMesh();
-        testPack1.contentID = "LBPDLCAMOGUS0001";
+        testPack1.contentID = "";
         testPack1.timestamp = 1795204244;
         testPack1.slot = testSlot1;
 
@@ -201,24 +205,28 @@ public class GenerateFarcHashesJob extends WorkerJob {
         testSlot2.planetDecorations = new ResourceDescriptor(102363, ResourceType.PLAN); // factory
         testSlot2.primaryLinkLevel = null;
         testSlot2.initiallyLocked = false;
-        testSlot2.shareable = true;
+        testSlot2.shareable = false;
         testSlot2.developerLevelType = LevelType.MAIN_PATH;
-        testSlot2.name = "GROUP!!!";
-        testSlot2.description = "Legit";
-        testSlot2.labels = new Label[1];
-        testSlot2.labels[0] = new Label((int)RTranslationTable.makeLamsKeyID("LABEL_Quick"), 0); // why do i have to int cast a LAMS key?
+        testSlot2.name = "";
+        testSlot2.description = "";
+        testSlot2.labels = new Label[0];
         testSlot2.collectabubblesContained = new Collectabubble[0];
-        testSlot2.collectabubblesRequired = new Collectabubble[0];
+        testSlot2.collectabubblesRequired = new Collectabubble[]
+        {
+            new Collectabubble(),
+            new Collectabubble(),
+            new Collectabubble()
+        };
         testSlot2.moveRecommended = false;
         testSlot2.crossCompatible = false;
         testSlot2.showOnPlanet = true;
-        testSlot2.livesOverride = 40;
+        testSlot2.livesOverride = 0;
         testSlot2.group = null;
 
         Pack testPack2 = new Pack();
         testPack2.contentsType = ContentsType.GROUP;
         testPack2.mesh = testPack2.contentsType.getBadgeMesh();
-        testPack2.contentID = "LBPDLCAMOGUS0002";
+        testPack2.contentID = "";
         testPack2.timestamp = 1795204244;
         testPack2.slot = testSlot2;
 
@@ -239,9 +247,10 @@ public class GenerateFarcHashesJob extends WorkerJob {
         testDlcFile1.contentID = "LBPDLCAMOGUS0001";
         testDlcFile1.inGameCommerceID = "";
         testDlcFile1.categoryID = "";
-        testDlcFile1.flags = 17; //DLCFileFlags.OWNED;
+        testDlcFile1.flags = DLCFileFlags.OWNED;
         testDlcFile1.typeMask = 16;
 
+        /*
         DLCFile testDlcFile2 = new DLCFile();
         testDlcFile2.directory = "";
         testDlcFile2.file = "";
@@ -250,24 +259,23 @@ public class GenerateFarcHashesJob extends WorkerJob {
         testDlcFile2.categoryID = "";
         testDlcFile2.flags = 17; //DLCFileFlags.OWNED;
         testDlcFile2.typeMask = 16;
+        */
 
         dlcs.files.add(testDlcFile1);
-        dlcs.files.add(testDlcFile2);
+        // dlcs.files.add(testDlcFile2);
 
         HashSet<GUID> guids = new HashSet<>();
         //guids.add(new GUID(18451));
         guids.add(new GUID(142846)); // root level guid of the one level
 
-        /*
         for (SHA1 hash : hashes) {
             // Generate guids for our hashes
             guids.add(new GUID(RTranslationTable.makeLamsKeyID(hash.toString())));
         }
-        */
 
         for (GUID guid : guids) {
             testDlcFile1.guids.add(guid);
-            testDlcFile2.guids.add(guid);
+            //testDlcFile2.guids.add(guid);
 
             DLCGUID testDlcGuid1 = new DLCGUID();
             testDlcGuid1.guid = guid;
