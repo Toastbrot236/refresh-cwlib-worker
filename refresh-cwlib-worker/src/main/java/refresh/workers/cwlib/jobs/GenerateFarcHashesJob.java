@@ -28,6 +28,7 @@ import cwlib.structs.slot.Slot;
 import cwlib.structs.slot.SlotID;
 import cwlib.types.SerializedResource;
 import cwlib.types.archives.Fart;
+import cwlib.types.archives.SaveArchive;
 import cwlib.types.data.GUID;
 import cwlib.types.data.ResourceDescriptor;
 import cwlib.types.data.Revision;
@@ -40,7 +41,6 @@ import refresh.database.models.assets.FarcHashesData;
 import refresh.resources.DLCHeaderFile;
 import refresh.resources.MinimalFart;
 import refresh.resources.MinimalFileDB;
-import refresh.resources.RemoteFart;
 import refresh.workers.WorkContext;
 import refresh.workers.WorkerJob;
 import refresh.workers.cwlib.state.AssetListState;
@@ -69,23 +69,21 @@ public class GenerateFarcHashesJob extends WorkerJob {
             return;
         }
 
-        RemoteFart pinFarc = new RemoteFart();
-        RemoteFart packFarc = new RemoteFart();
+        SaveArchive pinFarc = new SaveArchive(new Revision(Revisions.LBP2_MAX), 4);
+        SaveArchive packFarc = new SaveArchive(new Revision(Revisions.LBP2_MAX), 4);
         FileDB map = new FileDB(0x100); // taken from LBP2 brg_patch.map
         RTranslationTable englishTrans = this.createTestTransTable();
         RPins pins = this.createTestPins();
         RPacks packs = this.createTestPacks();
 
         SHA1 englishTransHash = this.writeTransTable("english.trans", englishTrans, map, new Fart[] {pinFarc, packFarc});
-        SHA1 pinResourceHash = this.writeNormalResource("pins.pin", pins, map, new Fart[] {pinFarc, packFarc});
-        SHA1 packResourceHash = this.writeNormalResource("packs.pck", packs, map, new Fart[] {pinFarc, packFarc});
+        SHA1 pinResourceHash = this.writeNormalResource("pins.pin", pins, map, new Fart[] {pinFarc});
+        SHA1 packResourceHash = this.writeNormalResource("packs.pck", packs, map, new Fart[] {packFarc});
 
-        /*
         pinFarc.getKey().setRootHash(pinResourceHash);
         pinFarc.getKey().setRootType(ResourceType.PINS);
         packFarc.getKey().setRootHash(packResourceHash);
         packFarc.getKey().setRootType(ResourceType.PACKS);
-        */
 
         RDLC dlcs = this.createTestDlcResource(new SHA1[] {englishTransHash, pinResourceHash, packResourceHash});
         SHA1 dlcResourceHash = this.writeDlcResource("dlcs.dlc", dlcs, map, new Fart[] {pinFarc, packFarc});
@@ -93,15 +91,11 @@ public class GenerateFarcHashesJob extends WorkerJob {
         SHA1 mapHash = this.writeMap("database.map", map, new Fart[] {pinFarc, packFarc});
 
         DLCHeaderFile header = this.createTestDlcHeader(dlcResourceHash, ResourceType.DOWNLOADABLE_CONTENT, englishTransHash, mapHash);
-        DLCHeaderFile pinHeader = this.createTestDlcHeader(pinResourceHash, ResourceType.PINS, englishTransHash, mapHash);
-        DLCHeaderFile packHeader = this.createTestDlcHeader(packResourceHash, ResourceType.PACKS, englishTransHash, mapHash);
 
-        SHA1 pinHeaderHash = this.writeDlcHeader("pin_header.bin", pinHeader);
-        SHA1 packHeaderHash = this.writeDlcHeader("pack_header.bin", packHeader);
         SHA1 dlcHeaderHash = this.writeDlcHeader("dlc_header.bin", header);
 
-        pinFarc.headerHash = pinHeaderHash;
-        packFarc.headerHash = packHeaderHash;
+        //pinFarc.headerHash = pinResourceHash;
+        //packFarc.headerHash = packResourceHash;
         SHA1 pinFarcHash = this.writeFarc("pins.farc", pinFarc);
         SHA1 packFarcHash = this.writeFarc("packs.farc", packFarc);
 
@@ -133,8 +127,6 @@ public class GenerateFarcHashesJob extends WorkerJob {
 
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PIN_NAME"), "Epic pin name!!");
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PIN_DESC"), "Epic pin desk!!");
-        trans.add(RTranslationTable.makeLamsKeyID("DAVINCI_THEME_NAME"), "Da vinki???");
-        trans.add(RTranslationTable.makeLamsKeyID("DAVINCI_THEME_DESC"), "lololol");
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PACK_GROUP_NAME"), "Epic pack group name!!");
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PACK_GROUP_DESC"), "Epic pack group descedfressfsd lol!!");
         trans.add(RTranslationTable.makeLamsKeyID("TESTER_TEST_PACK_LEVEL_NAME"), "Epic pack leval name!!");
@@ -394,9 +386,9 @@ public class GenerateFarcHashesJob extends WorkerJob {
         return this.writeFile(filename, binary, json, null, null);
     }
 
-    public SHA1 writeFarc(String filename, RemoteFart farc) {
-        byte[] binary = farc.build();
-        String json = GsonUtils.toJSON(new MinimalFart(farc), new Revision(Revisions.LBP2_MAX));
+    public SHA1 writeFarc(String filename, SaveArchive farc) {
+        byte[] binary = farc.build(false);
+        String json = GsonUtils.toJSON(new MinimalFart(farc, farc.getKey()), new Revision(Revisions.LBP2_MAX));
 
         return this.writeFile(filename, binary, json, null, null);
     }

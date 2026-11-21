@@ -27,7 +27,7 @@ public class RemoteFart extends Fart{
         MemoryOutputStream stream = new MemoryOutputStream((int)(0x14 + this.getQueueSize() + (this.queue.size() * 0x1c) + 0x4 + 0x4));
 
         // write header hash
-        stream.sha1(this.headerHash);
+        //stream.sha1(this.headerHash);
 
         ArrayList<Fat> fats = new ArrayList<>();
 
