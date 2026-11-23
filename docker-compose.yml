@@ -1,0 +1,10 @@
+services:
+  cwlib-worker:
+    image: cwlib-worker:latest
+    container_name: refresh-cwlib-worker
+    build: .
+    restart: unless-stopped
+    environment:
+      BUNKUM_DATA_FOLDER: /refresh/data
+    volumes:
+      - "./data/gameserver:/refresh/data:z"
